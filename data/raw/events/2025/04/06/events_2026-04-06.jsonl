@@ -1,8 +1,0 @@
-{"event_id": "d753a566-9f38-4228-a34f-6de76acf54ec", "event_type": "click", "user_id": "user_35", "timestamp": "2026-04-06T08:53:57.321400", "device": "desktop", "location": "France", "amount": null}
-{"event_id": "01a21df3-2825-4eaa-859b-478ad88a3a08", "event_type": "purchase", "user_id": "user_45", "timestamp": "2026-04-06T08:54:01.335148", "device": "tablet", "location": "France", "amount": 59.7}
-{"event_id": "001eb34c-71bc-4c3e-81c6-428cea15a979", "event_type": "purchase", "user_id": "user_58", "timestamp": "2026-04-06T08:54:05.349511", "device": "tablet", "location": "India", "amount": 366.49}
-{"event_id": "3bc9a7c1-9130-453f-a140-1afcd503c9d5", "event_type": "logout", "user_id": "user_10", "timestamp": "2026-04-06T08:54:09.354285", "device": "tablet", "location": "UK", "amount": null}
-{"event_id": "9d3c5d31-db79-486e-a337-e4666ee9a80d", "event_type": "purchase", "user_id": "user_89", "timestamp": "2026-04-06T08:54:13.359283", "device": "desktop", "location": "China", "amount": 413.45}
-{"event_id": "822d9d06-d92f-42be-a97e-fe85337045f9", "event_type": "login", "user_id": "user_89", "timestamp": "2026-04-06T08:54:17.364349", "device": "tablet", "location": "France", "amount": null}
-{"event_id": "dfcb609f-5b96-4f8a-9065-a4f0f019bdde", "event_type": "logout", "user_id": "user_24", "timestamp": "2026-04-06T08:54:21.371459", "device": "tablet", "location": "UK", "amount": null}
-{"event_id": "33728d40-aba8-4bcd-9419-7fcc4c03e1a6", "event_type": "logout", "user_id": "user_53", "timestamp": "2026-04-06T08:54:25.380483", "device": "tablet", "location": "Australia", "amount": null}
