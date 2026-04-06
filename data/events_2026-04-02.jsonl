@@ -1,0 +1,10 @@
+{"event_id":"952c1e7a-ec10-44ab-b6fc-fc8155a3519d","event_type":"login","user_id":"user_39","timestamp":"2026-04-02T11:30:32.727215","device":"tablet","location":"USA","amount":null}
+{"event_id":"c7b00bde-a89e-4648-9f88-69572f499cec","event_type":"purchase","user_id":"user_36","timestamp":"2026-04-02T11:30:32.727286","device":"desktop","location":"Australia","amount":39.48}
+{"event_id":"0fe7e2a1-5e87-40d1-8894-dc3868d34cad","event_type":"purchase","user_id":"user_11","timestamp":"2026-04-02T11:30:32.739650","device":"mobile","location":"UK","amount":156.28}
+{"event_id":"586c1650-a616-48a1-8a55-674b772d61a7","event_type":"click","user_id":"user_5","timestamp":"2026-04-02T11:30:32.739703","device":"desktop","location":"Australia","amount":null}
+{"event_id":"cebec279-3a69-4c2d-804b-ca041ecffa8c","event_type":"purchase","user_id":"user_95","timestamp":"2026-04-02T11:30:32.740337","device":"desktop","location":"Germany","amount":32.95}
+{"event_id":"7ce542aa-6a90-4319-9e9f-3db322c8e459","event_type":"click","user_id":"user_57","timestamp":"2026-04-02T11:32:19.625317","device":"desktop","location":"India","amount":null}
+{"event_id":"3ac00102-09b8-4a53-a44a-60df847a3a37","event_type":"logout","user_id":"user_66","timestamp":"2026-04-02T11:32:31.910230","device":"tablet","location":"UK","amount":null}
+{"event_id":"ab502f4d-dc51-48e1-9bf1-58a80888d977","event_type":"click","user_id":"user_78","timestamp":"2026-04-02T11:32:31.910299","device":"tablet","location":"India","amount":null}
+{"event_id":"8f240c6d-e23c-48d1-9f7d-0a1d40f824b2","event_type":"purchase","user_id":"user_41","timestamp":"2026-04-02T11:32:31.910340","device":"mobile","location":"Canada","amount":483.78}
+{"event_id":"bf71b3c7-20ab-46d8-8d18-bba9cb381cbe","event_type":"logout","user_id":"user_90","timestamp":"2026-04-02T11:32:31.919406","device":"tablet","location":"Brazil","amount":null}

@@ -1,0 +1,11 @@
+services:
+  eventstreamx:
+    image: eventstreamx:latest
+    build:
+      context: .
+      dockerfile: dockerfile
+    volumes:
+      - ./data:/app/data
+    working_dir: /app
+    command: python -m app.main
+    restart: unless-stopped
