@@ -56,7 +56,7 @@ class GenerateEvents:
         year = event_time.strftime("%Y")
         month = event_time.strftime("%m")
         day = event_time.strftime("%d")
-        return base_dir / "data" / "raw" / "events" / f"year={year}/month={month}/day={day}/events.jsonl"
+        return base_dir / "data" / "raw" / "events" / f"year={year}" / f"month={month}" / f"day={day}" / "events.jsonl"
 
     def save_event(self, events, output_path=None):
         # Logic to save the generated events (e.g., to a file or database)
