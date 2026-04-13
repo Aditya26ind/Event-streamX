@@ -28,6 +28,10 @@ def create_producer() -> KafkaProducer:
     return KafkaProducer(
         bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
         value_serializer=lambda value: json.dumps(value).encode("utf-8"),
+        retreis=5,
+        retry_backoff_ms=1000,
+        max_in_flight_requests_per_connection=1,
+        
     )
 
 
