@@ -18,7 +18,8 @@ from scripts.event_generator import GenerateEvents
 
 logger = setup_logger()
 
-KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS",
+                                    "localhost:9092")
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "events")
 PRODUCE_INTERVAL_SECONDS = random.uniform(1, 3)
 shutdown_requested = Event()
@@ -31,7 +32,6 @@ def create_producer() -> KafkaProducer:
         retreis=5,
         retry_backoff_ms=1000,
         max_in_flight_requests_per_connection=1,
-        
     )
 
 
@@ -56,7 +56,10 @@ def log_delivery_error(exc: Exception, event_id: str) -> None:
     logger.error(
         "Failed to deliver event",
         exc_info=exc,
-        extra={"event_id": event_id, "topic": KAFKA_TOPIC},
+        extra={
+            "event_id": event_id,
+            "topic": KAFKA_TOPIC
+        },
     )
 
 
@@ -88,7 +91,10 @@ def main() -> None:
 
             logger.info(
                 "Event sent to Kafka",
-                extra={"topic": KAFKA_TOPIC, "event_id": event["event_id"]},
+                extra={
+                    "topic": KAFKA_TOPIC,
+                    "event_id": event["event_id"]
+                },
             )
             shutdown_requested.wait(PRODUCE_INTERVAL_SECONDS)
     except KeyboardInterrupt:
