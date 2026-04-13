@@ -1,8 +1,11 @@
 import json
 import os
+import random
+import signal
 import sys
 import time
 from pathlib import Path
+from threading import Event
 
 from kafka import KafkaProducer
 
@@ -17,7 +20,8 @@ logger = setup_logger()
 
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "events")
-PRODUCE_INTERVAL_SECONDS = float(os.getenv("PRODUCE_INTERVAL_SECONDS", "2"))
+PRODUCE_INTERVAL_SECONDS = random.uniform(1, 3)
+shutdown_requested = Event()
 
 
 def create_producer() -> KafkaProducer:
@@ -27,9 +31,36 @@ def create_producer() -> KafkaProducer:
     )
 
 
+def request_shutdown(signum, _frame) -> None:
+    logger.info("Shutdown signal received", extra={"signal": signum})
+    shutdown_requested.set()
+
+
+def log_delivery_success(record_metadata, event_id: str) -> None:
+    logger.info(
+        "Event delivered",
+        extra={
+            "topic": record_metadata.topic,
+            "partition": record_metadata.partition,
+            "offset": record_metadata.offset,
+            "event_id": event_id,
+        },
+    )
+
+
+def log_delivery_error(exc: Exception, event_id: str) -> None:
+    logger.error(
+        "Failed to deliver event",
+        exc_info=exc,
+        extra={"event_id": event_id, "topic": KAFKA_TOPIC},
+    )
+
+
 def main() -> None:
     generator = GenerateEvents()
     producer = create_producer()
+    signal.signal(signal.SIGINT, request_shutdown)
+    signal.signal(signal.SIGTERM, request_shutdown)
 
     logger.info(
         "Kafka producer started",
@@ -40,16 +71,30 @@ def main() -> None:
         },
     )
 
-    while True:
-        event = generator.generate_event()
-        producer.send(KAFKA_TOPIC, value=event)
-        producer.flush()
+    try:
+        while not shutdown_requested.is_set():
+            event = generator.generate_event()
+            future = producer.send(
+                KAFKA_TOPIC,
+                key=event["user_id"].encode(),
+                value=event,
+            )
+            future.add_callback(log_delivery_success, event["event_id"])
+            future.add_errback(log_delivery_error, event["event_id"])
 
-        logger.info(
-            "Event sent to Kafka",
-            extra={"topic": KAFKA_TOPIC, "event_id": event["event_id"]},
-        )
-        time.sleep(PRODUCE_INTERVAL_SECONDS)
+            logger.info(
+                "Event sent to Kafka",
+                extra={"topic": KAFKA_TOPIC, "event_id": event["event_id"]},
+            )
+            shutdown_requested.wait(PRODUCE_INTERVAL_SECONDS)
+    except KeyboardInterrupt:
+        logger.info("Keyboard interrupt received")
+        shutdown_requested.set()
+    finally:
+        logger.info("Shutting down Kafka producer")
+        producer.flush()
+        producer.close()
+        logger.info("Kafka producer closed cleanly")
 
 
 if __name__ == "__main__":

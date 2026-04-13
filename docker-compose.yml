@@ -7,7 +7,7 @@ services:
     volumes:
       - ./data:/app/data
     working_dir: /app
-    command: python -m app.main
+    command: python scripts/kafka_producer.py
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_TOPIC: events
