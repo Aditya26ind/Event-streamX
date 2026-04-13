@@ -9,4 +9,8 @@ venv/
 *.csv
 *.jsonl
 .DS_Store
-
+.cache/
+.idea/
+.vscode/
+.cpython-*/
+.pyc
