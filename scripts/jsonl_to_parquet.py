@@ -8,10 +8,12 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.logging_config import setup_logger
+from scripts.s3_storage import S3Storage
 
 RAW_EVENTS_DIR = Path("data/raw/events")
 PROCESSED_EVENTS_DIR = Path("data/processed/events")
 logger = setup_logger()
+s3_storage = S3Storage()
 
 
 def convert_jsonl_to_parquet(input_path: Path, output_path: Path) -> None:
@@ -43,6 +45,7 @@ def convert_jsonl_to_parquet(input_path: Path, output_path: Path) -> None:
     
     output_path.parent.mkdir(parents=True, exist_ok=True)
     dataframe.to_parquet(output_path, index=False)
+    s3_storage.upload_file(output_path)
 
 
 def main() -> None:

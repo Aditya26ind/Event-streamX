@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 from app.logging_config import setup_logger
+from scripts.s3_storage import S3Storage
 
 logger = setup_logger()  # common logger setup
 
@@ -16,6 +17,7 @@ class GenerateEvents:
     def __init__(self, event_type=None, event_data=None):
         self.event_type = event_type
         self.event_data = event_data
+        self.s3_storage = S3Storage()
 
     def generate_event(self):
         # Logic to generate an event based on the type and data
@@ -90,6 +92,7 @@ class GenerateEvents:
             with output_path.open("a", encoding="utf-8") as f:
                 for event in events:
                     f.write(json.dumps(event, default=str) + "\n")
+            self.s3_storage.upload_file(output_path)
         else:
             base_dir = Path(__file__).resolve().parents[1]
             events_by_path = defaultdict(list)
@@ -107,6 +110,7 @@ class GenerateEvents:
                 with partition_path.open("a", encoding="utf-8") as f:
                     for event in partition_events:
                         f.write(json.dumps(event, default=str) + "\n")
+                self.s3_storage.upload_file(partition_path)
 
             output_path = next(iter(events_by_path))
 
