@@ -1,5 +1,6 @@
 from pathlib import Path
 import sys
+from io import BytesIO
 
 from botocore.exceptions import ClientError
 
@@ -16,6 +17,8 @@ class FakeS3Client:
         self.head_bucket_calls: list[str] = []
         self.created_buckets: list[dict] = []
         self.uploads: list[dict] = []
+        self.puts: list[dict] = []
+        self.objects: dict[str, bytes] = {}
 
     def head_bucket(self, Bucket: str) -> None:
         self.head_bucket_calls.append(Bucket)
@@ -37,6 +40,27 @@ class FakeS3Client:
                 "extra_args": ExtraArgs,
             }
         )
+
+    def put_object(self, **kwargs) -> None:
+        self.puts.append(kwargs)
+        self.objects[kwargs["Key"]] = kwargs["Body"]
+
+    def get_object(self, Bucket: str, Key: str) -> dict:
+        return {"Body": BytesIO(self.objects[Key])}
+
+    def get_paginator(self, _name: str):
+        client = self
+
+        class Paginator:
+            def paginate(self, Bucket: str, Prefix: str):
+                contents = [
+                    {"Key": key}
+                    for key in sorted(client.objects)
+                    if key.startswith(Prefix)
+                ]
+                yield {"Contents": contents}
+
+        return Paginator()
 
 
 def test_upload_file_skips_when_disabled(monkeypatch, tmp_path: Path) -> None:
@@ -74,4 +98,18 @@ def test_upload_file_creates_bucket_and_uploads(monkeypatch, tmp_path: Path) -> 
             "key": "data/raw/events/sample.jsonl",
             "extra_args": {"ContentType": "application/json"},
         }
+    ]
+
+
+def test_upload_bytes_and_list_keys(monkeypatch) -> None:
+    monkeypatch.setenv("S3_STORAGE_ENABLED", "true")
+
+    storage = S3Storage()
+    fake_client = FakeS3Client()
+    monkeypatch.setattr(storage, "_create_client", lambda: fake_client)
+
+    assert storage.upload_bytes(b"payload", "data/processed/events/sample.parquet") is True
+    assert storage.read_file("data/processed/events/sample.parquet") == b"payload"
+    assert storage.list_keys("data/processed/events") == [
+        "data/processed/events/sample.parquet"
     ]

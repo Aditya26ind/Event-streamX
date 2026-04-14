@@ -1,5 +1,5 @@
-import mimetypes
 import os
+import mimetypes
 from pathlib import Path
 
 import boto3
@@ -34,7 +34,7 @@ class S3Storage:
             )
             return False
 
-        object_key = resolved_path.relative_to(PROJECT_ROOT).as_posix()
+        object_key = self.object_key_from_path(resolved_path)
         client = self._create_client()
 
         try:
@@ -64,6 +64,45 @@ class S3Storage:
                     "bucket_name": self.bucket_name,
                     "object_key": object_key,
                     "file_path": str(resolved_path),
+                    "endpoint_url": self.endpoint_url,
+                },
+            )
+            return False
+
+    def object_key_from_path(self, file_path: Path) -> str:
+        return file_path.resolve().relative_to(PROJECT_ROOT).as_posix()
+
+    def upload_bytes(self, payload: bytes, object_key: str) -> bool:
+        if not self.enabled:
+            return False
+
+        client = self._create_client()
+        try:
+            self._ensure_bucket(client)
+            extra_args = self._build_extra_args_from_key(object_key)
+            put_kwargs = {
+                "Bucket": self.bucket_name,
+                "Key": object_key,
+                "Body": payload,
+            }
+            put_kwargs.update(extra_args)
+            client.put_object(**put_kwargs)
+            logger.info(
+                "Bytes written to S3",
+                extra={
+                    "bucket_name": self.bucket_name,
+                    "object_key": object_key,
+                    "endpoint_url": self.endpoint_url,
+                },
+            )
+            return True
+        except (BotoCoreError, ClientError) as exc:
+            logger.exception(
+                "Failed to write bytes to S3",
+                exc_info=exc,
+                extra={
+                    "bucket_name": self.bucket_name,
+                    "object_key": object_key,
                     "endpoint_url": self.endpoint_url,
                 },
             )
@@ -99,14 +138,61 @@ class S3Storage:
                     "endpoint_url": self.endpoint_url,
                 },
             )
+    
+    def read_file(self, object_key: str) -> bytes:
+        if not self.enabled:
+            raise RuntimeError("S3 storage is disabled")
+
+        client = self._create_client()
+        try:
+            response = client.get_object(Bucket=self.bucket_name, Key=object_key)
+            return response["Body"].read()
+        except (BotoCoreError, ClientError) as exc:
+            logger.exception(
+                "Failed to read file from S3",
+                exc_info=exc,
+                extra={
+                    "bucket_name": self.bucket_name,
+                    "object_key": object_key,
+                    "endpoint_url": self.endpoint_url,
+                },
+            )
+            raise RuntimeError(f"Failed to read file from S3: {object_key}") from exc
+
+    def list_keys(self, prefix: str) -> list[str]:
+        if not self.enabled:
+            raise RuntimeError("S3 storage is disabled")
+
+        client = self._create_client()
+        try:
+            paginator = client.get_paginator("list_objects_v2")
+            keys: list[str] = []
+            for page in paginator.paginate(Bucket=self.bucket_name, Prefix=prefix):
+                for item in page.get("Contents", []):
+                    keys.append(item["Key"])
+            return keys
+        except (BotoCoreError, ClientError) as exc:
+            logger.exception(
+                "Failed to list files from S3",
+                exc_info=exc,
+                extra={
+                    "bucket_name": self.bucket_name,
+                    "prefix": prefix,
+                    "endpoint_url": self.endpoint_url,
+                },
+            )
+            raise RuntimeError(f"Failed to list files from S3: {prefix}") from exc
 
     def _build_extra_args(self, file_path: Path) -> dict[str, str]:
-        if file_path.suffix == ".jsonl":
+        return self._build_extra_args_from_key(file_path.name)
+
+    def _build_extra_args_from_key(self, object_key: str) -> dict[str, str]:
+        if object_key.endswith(".jsonl"):
             return {"ContentType": "application/json"}
-        if file_path.suffix == ".parquet":
+        if object_key.endswith(".parquet"):
             return {"ContentType": "application/octet-stream"}
 
-        content_type, _ = mimetypes.guess_type(str(file_path))
+        content_type, _ = mimetypes.guess_type(object_key)
         if content_type:
             return {"ContentType": content_type}
         return {}

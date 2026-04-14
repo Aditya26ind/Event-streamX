@@ -4,6 +4,7 @@ import uuid
 from collections import defaultdict
 from datetime import datetime
 import json
+import os
 from pathlib import Path
 
 from app.logging_config import setup_logger
@@ -18,6 +19,7 @@ class GenerateEvents:
         self.event_type = event_type
         self.event_data = event_data
         self.s3_storage = S3Storage()
+        self.production_mode = os.getenv("PRODUCTION_MODE", "false").lower() == "true"
 
     def generate_event(self):
         # Logic to generate an event based on the type and data
@@ -89,10 +91,7 @@ class GenerateEvents:
                             "event_count": event_count,
                             "output_path": str(output_path)
                         })
-            with output_path.open("a", encoding="utf-8") as f:
-                for event in events:
-                    f.write(json.dumps(event, default=str) + "\n")
-            self.s3_storage.upload_file(output_path)
+            self._persist_events(events, output_path)
         else:
             base_dir = Path(__file__).resolve().parents[1]
             events_by_path = defaultdict(list)
@@ -107,10 +106,7 @@ class GenerateEvents:
                                 "event_count": len(partition_events),
                                 "output_path": str(partition_path)
                             })
-                with partition_path.open("a", encoding="utf-8") as f:
-                    for event in partition_events:
-                        f.write(json.dumps(event, default=str) + "\n")
-                self.s3_storage.upload_file(partition_path)
+                self._persist_events(partition_events, partition_path)
 
             output_path = next(iter(events_by_path))
 
@@ -120,6 +116,27 @@ class GenerateEvents:
             "path": str(output_path),
             "message": f"{event_count} events saved successfully",
         }
+
+    def _persist_events(self, events, output_path: Path) -> None:
+        payload = "".join(json.dumps(event, default=str) + "\n" for event in events)
+
+        if not self.production_mode:
+            with output_path.open("a", encoding="utf-8") as f:
+                f.write(payload)
+            self.s3_storage.upload_file(output_path)
+            return
+
+        if self.s3_storage.enabled:
+            object_key = self.s3_storage.object_key_from_path(output_path)
+            upload_succeeded = self.s3_storage.upload_bytes(
+                payload.encode("utf-8"),
+                object_key,
+            )
+            if not upload_succeeded:
+                raise RuntimeError(f"Failed to write events to S3: {object_key}")
+            return
+
+        raise RuntimeError("Production mode requires S3_STORAGE_ENABLED=true")
 
 
 if __name__ == "__main__":
