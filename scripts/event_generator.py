@@ -60,7 +60,7 @@ class GenerateEvents:
         day = event_time.strftime("%d")
         return base_dir / "data" / "raw" / "events" / f"year={year}" / f"month={month}" / f"day={day}" / "events.jsonl"
 
-    def save_event(self, events, output_path=None):
+    def save_event(self, events, output_path=None, batch_metadata=None):
         # Logic to save the generated events (e.g., to a file or database)
         # Handle both single event and list of events for backward compatibility
         if isinstance(events, dict):
@@ -69,6 +69,7 @@ class GenerateEvents:
         if not isinstance(events, list):
             raise TypeError("events must be a dict or list of dicts")
 
+        batch_id = batch_metadata.get("batch_id", str(uuid.uuid4())) if batch_metadata else str(uuid.uuid4())
         event_count = len(events)
         if event_count == 0:
             resolved_path = Path(output_path) if output_path is not None else Path(
@@ -78,6 +79,7 @@ class GenerateEvents:
                 "status": "no-op",
                 "event_count": 0,
                 "path": str(resolved_path),
+                "batch_id": batch_id,
                 "message": "No events to save",
             }
 
@@ -94,7 +96,7 @@ class GenerateEvents:
             base_dir = Path(__file__).resolve().parents[1]
             events_by_path = defaultdict(list)
             for event in events:
-                partition_path = self._build_partition_path(event, base_dir)
+                partition_path = self._build_partition_path(event, base_dir, batch_id)
                 events_by_path[partition_path].append(event)
 
             for partition_path, partition_events in events_by_path.items():
@@ -112,6 +114,7 @@ class GenerateEvents:
             "status": "saved",
             "event_count": event_count,
             "path": str(output_path),
+            "batch_id": batch_id,
             "message": f"{event_count} events saved successfully",
         }
 
@@ -135,6 +138,28 @@ class GenerateEvents:
             return
 
         raise RuntimeError("Production mode requires S3_STORAGE_ENABLED=true")
+
+    def _build_partition_path(self, event: dict, base_dir: Path, batch_id: str = None) -> Path:
+        """Build partitioned path for event with unique batch naming."""
+        timestamp = datetime.fromisoformat(event["timestamp"])
+        year = timestamp.strftime("%Y")
+        month = timestamp.strftime("%m")
+        day = timestamp.strftime("%d")
+
+        # Use batch_id for unique file naming to ensure idempotency
+        batch_suffix = f"_{batch_id}" if batch_id else ""
+        filename = f"events{batch_suffix}.jsonl"
+
+        return (
+            base_dir
+            / "data"
+            / "raw"
+            / "events"
+            / f"year={year}"
+            / f"month={month}"
+            / f"day={day}"
+            / filename
+        )
 
 
 if __name__ == "__main__":

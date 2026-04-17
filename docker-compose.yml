@@ -11,6 +11,7 @@ services:
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_TOPIC: events
+      KAFKA_DLQ_TOPIC: events-dlq
       PRODUCER_BATCH_SIZE: 100
       S3_STORAGE_ENABLED: "true"
       S3_ENDPOINT_URL: http://minio:9000
@@ -38,6 +39,7 @@ services:
       KAFKA_GROUP_ID: eventstreamx-consumer
       KAFKA_BATCH_SIZE: 1000
       KAFKA_POLL_TIMEOUT_MS: 1000
+      KAFKA_DLQ_TOPIC: events-dlq
       S3_STORAGE_ENABLED: "true"
       S3_ENDPOINT_URL: http://minio:9000
       S3_BUCKET_NAME: eventstreamx-data

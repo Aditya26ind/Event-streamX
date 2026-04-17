@@ -96,11 +96,29 @@ A high-performance real-time data streaming platform using Kafka, MinIO S3-compa
 - Monitor Kafka metrics via JMX or external tools.
 - Check MinIO console for storage usage.
 
-## Development
+## Reliability Features
 
-- **Run Tests**: `pytest`
-- **Linting**: Add your preferred linter (e.g., flake8, black)
-- **Local Development**: Use `PRODUCTION_MODE=false` for local file storage
+### Failure Handling
+- **Dead-Letter Queues**: Failed messages are sent to `events-dlq` topic for later processing
+- **Retry Logic**: Configurable retries with exponential backoff for transient failures
+- **Circuit Breaker**: Automatic failure detection prevents cascade failures
+- **Graceful Shutdown**: Clean shutdown with batch flushing and offset commits
+
+### Idempotent Writes
+- **Unique Batch IDs**: Each batch gets a UUID to prevent duplicate writes
+- **Atomic Commits**: Offsets committed only after successful persistence
+- **File Naming**: Batch IDs included in filenames for conflict prevention
+
+### Observability
+- **Metrics Collection**: Real-time metrics for throughput, lag, failures
+- **Structured Logging**: JSON logs with context for debugging
+- **Health Checks**: Automatic monitoring of consumer lag and producer health
+- **Performance Monitoring**: Throughput tracking (events/second)
+
+### Error Recovery
+- **Rebalance Handling**: Batches flushed during partition reassignments
+- **Connection Resilience**: Automatic reconnection with backoff
+- **Data Integrity**: Exactly-once semantics with manual offset management
 
 ## API Reference
 
