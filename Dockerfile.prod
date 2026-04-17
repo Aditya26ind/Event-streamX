@@ -1,0 +1,11 @@
+# Production image for EventStreamX
+# This Dockerfile is intended for production builds, such as AWS MSK deployments.
+FROM python:3.12-slim
+
+WORKDIR /app
+COPY . /app
+RUN pip install -r requirements.txt
+RUN mkdir -p /app/data
+
+# In production, the orchestrator should set the actual run command.
+CMD ["python", "-m", "app.main"]

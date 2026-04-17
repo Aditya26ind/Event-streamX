@@ -3,16 +3,18 @@ services:
     image: eventstreamx:latest
     build:
       context: .
-      dockerfile: dockerfile
+      dockerfile: Dockerfile.local
     volumes:
       - ./data:/app/data
     working_dir: /app
     command: python scripts/kafka_producer.py
     environment:
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_BOOTSTRAP_SERVERS: kafka-1:9092,kafka-2:9092,kafka-3:9092
       KAFKA_TOPIC: events
       KAFKA_DLQ_TOPIC: events-dlq
       PRODUCER_BATCH_SIZE: 100
+      KAFKA_CONNECT_RETRIES: 10
+      KAFKA_CONNECT_RETRY_BACKOFF_SECONDS: 5
       S3_STORAGE_ENABLED: "true"
       S3_ENDPOINT_URL: http://minio:9000
       S3_BUCKET_NAME: eventstreamx-data
@@ -21,25 +23,29 @@ services:
       AWS_DEFAULT_REGION: us-east-1
     restart: unless-stopped
     depends_on:
-      - kafka
+      - kafka-1
+      - kafka-2
+      - kafka-3
       - minio
       - minio-init
-  consumer:
+  consumer-1:
     image: eventstreamx:latest
     build:
       context: .
-      dockerfile: dockerfile
+      dockerfile: Dockerfile.local
     volumes:
       - ./data:/app/data
     working_dir: /app
     command: python scripts/kafka_consumer.py
     environment:
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_BOOTSTRAP_SERVERS: kafka-1:9092,kafka-2:9092,kafka-3:9092
       KAFKA_TOPIC: events
-      KAFKA_GROUP_ID: eventstreamx-consumer
+      KAFKA_GROUP_ID: eventstreamx-consumer-group
       KAFKA_BATCH_SIZE: 1000
       KAFKA_POLL_TIMEOUT_MS: 1000
       KAFKA_DLQ_TOPIC: events-dlq
+      KAFKA_CONNECT_RETRIES: 10
+      KAFKA_CONNECT_RETRY_BACKOFF_SECONDS: 5
       S3_STORAGE_ENABLED: "true"
       S3_ENDPOINT_URL: http://minio:9000
       S3_BUCKET_NAME: eventstreamx-data
@@ -48,26 +54,120 @@ services:
       AWS_DEFAULT_REGION: us-east-1
     restart: unless-stopped
     depends_on:
-      - kafka
+      - kafka-1
+      - kafka-2
+      - kafka-3
       - minio
       - minio-init
+  consumer-2:
+    image: eventstreamx:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    volumes:
+      - ./data:/app/data
+    working_dir: /app
+    command: python scripts/kafka_consumer.py
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka-1:9092,kafka-2:9092,kafka-3:9092
+      KAFKA_TOPIC: events
+      KAFKA_GROUP_ID: eventstreamx-consumer-group
+      KAFKA_BATCH_SIZE: 1000
+      KAFKA_POLL_TIMEOUT_MS: 1000
+      KAFKA_DLQ_TOPIC: events-dlq
+      KAFKA_CONNECT_RETRIES: 10
+      KAFKA_CONNECT_RETRY_BACKOFF_SECONDS: 5
+      S3_STORAGE_ENABLED: "true"
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_BUCKET_NAME: eventstreamx-data
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+      AWS_DEFAULT_REGION: us-east-1
+    restart: unless-stopped
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+      - minio
+      - minio-init
+  consumer-3:
+    image: eventstreamx:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    volumes:
+      - ./data:/app/data
+    working_dir: /app
+    command: python scripts/kafka_consumer.py
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka-1:9092,kafka-2:9092,kafka-3:9092
+      KAFKA_TOPIC: events
+      KAFKA_GROUP_ID: eventstreamx-consumer-group
+      KAFKA_BATCH_SIZE: 1000
+      KAFKA_POLL_TIMEOUT_MS: 1000
+      KAFKA_DLQ_TOPIC: events-dlq
+      KAFKA_CONNECT_RETRIES: 10
+      KAFKA_CONNECT_RETRY_BACKOFF_SECONDS: 5
+      S3_STORAGE_ENABLED: "true"
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_BUCKET_NAME: eventstreamx-data
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+      AWS_DEFAULT_REGION: us-east-1
+    restart: unless-stopped
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+      - minio
+      - minio-init
+  load-tester:
+    image: eventstreamx:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    working_dir: /app
+    command: python scripts/load_test.py
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka-1:9092,kafka-2:9092,kafka-3:9092
+      KAFKA_TOPIC: events
+      TEST_DURATION_SECONDS: 300
+      TARGET_THROUGHPUT_EPS: 1000
+      NUM_PRODUCERS: 4
+      NUM_CONSUMERS: 3
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.0
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
-  kafka:
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+      - zookeeper-logs:/var/lib/zookeeper/log
+  kafka-1:
     image: confluentinc/cp-kafka:7.4.0
     ports:
       - "9092:9092"
+    volumes:
+      - kafka-1-data:/var/lib/kafka/data
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-1:9092,PLAINTEXT_HOST://localhost:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-      KAFKA_NUM_PARTITIONS: 6  # More partitions for parallelism
-      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_NUM_PARTITIONS: 12  # Increased partitions for better parallelism
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
       KAFKA_LOG_RETENTION_HOURS: 168  # 7 days retention
       KAFKA_LOG_SEGMENT_BYTES: 1073741824  # 1GB segment size
       KAFKA_LOG_RETENTION_BYTES: 10737418240  # 10GB total retention
@@ -77,6 +177,76 @@ services:
       KAFKA_MAX_PARTITION_FETCH_BYTES: 10485760  # 10MB per partition
       KAFKA_GROUP_MAX_SESSION_TIMEOUT_MS: 600000  # 10 minutes
       KAFKA_GROUP_MIN_SESSION_TIMEOUT_MS: 6000  # 6 seconds
+      KAFKA_LOG_CLEANUP_POLICY: delete
+      KAFKA_LOG_CLEANUP_INTERVAL_MS: 300000  # 5 minutes
+    depends_on:
+      - zookeeper
+  kafka-2:
+    image: confluentinc/cp-kafka:7.4.0
+    ports:
+      - "9094:9092"
+    volumes:
+      - kafka-2-data:/var/lib/kafka/data
+    environment:
+      KAFKA_BROKER_ID: 2
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:9095
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-2:9092,PLAINTEXT_HOST://localhost:9095
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: 12
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+      KAFKA_LOG_RETENTION_BYTES: 10737418240
+      KAFKA_MESSAGE_MAX_BYTES: 10485760
+      KAFKA_REPLICA_FETCH_MAX_BYTES: 10485760
+      KAFKA_FETCH_MAX_BYTES: 52428800
+      KAFKA_MAX_PARTITION_FETCH_BYTES: 10485760
+      KAFKA_GROUP_MAX_SESSION_TIMEOUT_MS: 600000
+      KAFKA_GROUP_MIN_SESSION_TIMEOUT_MS: 6000
+      KAFKA_LOG_CLEANUP_POLICY: delete
+      KAFKA_LOG_CLEANUP_INTERVAL_MS: 300000
+    depends_on:
+      - zookeeper
+  kafka-3:
+    image: confluentinc/cp-kafka:7.4.0
+    ports:
+      - "9096:9092"
+    volumes:
+      - kafka-3-data:/var/lib/kafka/data
+    environment:
+      KAFKA_BROKER_ID: 3
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:9097
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-3:9092,PLAINTEXT_HOST://localhost:9097
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: 12
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+      KAFKA_LOG_RETENTION_BYTES: 10737418240
+      KAFKA_MESSAGE_MAX_BYTES: 10485760
+      KAFKA_REPLICA_FETCH_MAX_BYTES: 10485760
+      KAFKA_FETCH_MAX_BYTES: 52428800
+      KAFKA_MAX_PARTITION_FETCH_BYTES: 10485760
+      KAFKA_GROUP_MAX_SESSION_TIMEOUT_MS: 600000
+      KAFKA_GROUP_MIN_SESSION_TIMEOUT_MS: 6000
+      KAFKA_LOG_CLEANUP_POLICY: delete
+      KAFKA_LOG_CLEANUP_INTERVAL_MS: 300000
     depends_on:
       - zookeeper
   minio:
@@ -99,3 +269,17 @@ services:
       until /usr/bin/mc alias set local http://minio:9000 minioadmin minioadmin; do sleep 1; done &&
       /usr/bin/mc mb --ignore-existing local/eventstreamx-data
       "
+
+volumes:
+  zookeeper-data:
+    driver: local
+  zookeeper-logs:
+    driver: local
+  kafka-1-data:
+    driver: local
+  kafka-2-data:
+    driver: local
+  kafka-3-data:
+    driver: local
+  minio-data:
+    driver: local
