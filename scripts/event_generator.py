@@ -23,7 +23,6 @@ class GenerateEvents:
 
     def generate_event(self):
         # Logic to generate an event based on the type and data
-        logger.info("Generating event", extra={"phase": "generate_event"})
         event_type = self.event_type or random.choices(
             ["click", "login", "logout", "purchase"],
             weights=[50, 20, 10, 20],
@@ -52,7 +51,6 @@ class GenerateEvents:
             if event_type == "purchase" else None,
         }
 
-        logger.info("Event generated", extra={"event": event})
         return event
 
     def _build_partition_path(self, event, base_dir):
@@ -149,8 +147,6 @@ if __name__ == "__main__":
         events_batch.append(event)
 
         if len(events_batch) >= batch_size:
+            logger.info("Generated batch of events", extra={"batch_size": len(events_batch)})
             generator.save_event(events_batch)
             events_batch = []  # Reset batch
-
-        # Random interval between 1-3 seconds
-        time.sleep(random.uniform(1, 3))

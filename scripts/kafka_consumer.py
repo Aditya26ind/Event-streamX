@@ -9,6 +9,7 @@ from typing import Any
 
 from kafka import KafkaConsumer
 from kafka.errors import KafkaError, NoBrokersAvailable
+from kafka.structs import TopicPartition
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -43,7 +44,7 @@ class EventConsumer:
         self.poll_timeout_ms = poll_timeout_ms or int(
             os.getenv("KAFKA_POLL_TIMEOUT_MS", "1000")
         )
-        self.batch_size = batch_size or int(os.getenv("KAFKA_BATCH_SIZE", "100"))
+        self.batch_size = batch_size or int(os.getenv("KAFKA_BATCH_SIZE", "1000"))  # Increased batch size
         self.save_retries = save_retries or int(os.getenv("KAFKA_SAVE_RETRIES", "3"))
         self.save_retry_backoff_seconds = (
             save_retry_backoff_seconds
@@ -61,14 +62,20 @@ class EventConsumer:
         self.generator = GenerateEvents()
         self.consumer: KafkaConsumer | None = None
         self.batch: list[dict[str, Any]] = []
+        self.assigned_partitions: set[TopicPartition] = set()
 
     def request_shutdown(self, signum, _frame) -> None:
         logger.info("Shutdown signal received", extra={"signal": signum})
         self.shutdown_requested.set()
 
-    def register_signal_handlers(self) -> None:
-        signal.signal(signal.SIGINT, self.request_shutdown)
-        signal.signal(signal.SIGTERM, self.request_shutdown)
+    def on_partitions_assigned(self, consumer, partitions):
+        logger.info("Partitions assigned", extra={"partitions": [str(p) for p in partitions]})
+        self.assigned_partitions = set(partitions)
+
+    def on_partitions_revoked(self, consumer, partitions):
+        logger.info("Partitions revoked, flushing batch", extra={"partitions": [str(p) for p in partitions]})
+        self.flush_batch()  # Ensure batch is saved before rebalance
+        self.assigned_partitions = set()
 
     def deserialize_message(self, raw_value: bytes) -> dict[str, Any]:
         if raw_value is None:
@@ -89,9 +96,18 @@ class EventConsumer:
                     group_id=self.group_id,
                     bootstrap_servers=self.bootstrap_servers,
                     auto_offset_reset="earliest",
-                    enable_auto_commit=False,
+                    enable_auto_commit=False,  # Manual commit for exactly-once
                     consumer_timeout_ms=self.poll_timeout_ms,
+                    max_poll_records=1000,     # Increased batch size
+                    fetch_max_bytes=50 * 1024 * 1024,  # 50 MB per fetch
+                    max_partition_fetch_bytes=10 * 1024 * 1024,  # 10 MB per partition
+                    session_timeout_ms=30000,  # 30 seconds
+                    heartbeat_interval_ms=3000,
+                    max_poll_interval_ms=300000,  # 5 minutes max poll interval
+                    enable_auto_commit_interval_ms=5000,  # Not used since manual
+                    isolation_level="read_committed",  # For transactions if used
                 )
+                consumer.subscribe([self.topic], on_assign=self.on_partitions_assigned, on_revoke=self.on_partitions_revoked)
                 logger.info(
                     "Kafka consumer connected",
                     extra={
