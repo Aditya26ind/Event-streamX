@@ -15,6 +15,7 @@ services:
       PRODUCER_BATCH_SIZE: 100
       KAFKA_CONNECT_RETRIES: 10
       KAFKA_CONNECT_RETRY_BACKOFF_SECONDS: 5
+      PRODUCTION_MODE: "false"
       S3_STORAGE_ENABLED: "true"
       S3_ENDPOINT_URL: http://minio:9000
       S3_BUCKET_NAME: eventstreamx-data
@@ -46,6 +47,7 @@ services:
       KAFKA_DLQ_TOPIC: events-dlq
       KAFKA_CONNECT_RETRIES: 10
       KAFKA_CONNECT_RETRY_BACKOFF_SECONDS: 5
+      PRODUCTION_MODE: "false"
       S3_STORAGE_ENABLED: "true"
       S3_ENDPOINT_URL: http://minio:9000
       S3_BUCKET_NAME: eventstreamx-data
@@ -77,6 +79,7 @@ services:
       KAFKA_DLQ_TOPIC: events-dlq
       KAFKA_CONNECT_RETRIES: 10
       KAFKA_CONNECT_RETRY_BACKOFF_SECONDS: 5
+      PRODUCTION_MODE: "false"
       S3_STORAGE_ENABLED: "true"
       S3_ENDPOINT_URL: http://minio:9000
       S3_BUCKET_NAME: eventstreamx-data
@@ -108,6 +111,7 @@ services:
       KAFKA_DLQ_TOPIC: events-dlq
       KAFKA_CONNECT_RETRIES: 10
       KAFKA_CONNECT_RETRY_BACKOFF_SECONDS: 5
+      PRODUCTION_MODE: "false"
       S3_STORAGE_ENABLED: "true"
       S3_ENDPOINT_URL: http://minio:9000
       S3_BUCKET_NAME: eventstreamx-data

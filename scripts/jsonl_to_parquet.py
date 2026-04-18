@@ -132,16 +132,22 @@ def run_local_pipeline() -> None:
 
     for input_file in input_files:
         splitted = input_file.parts
-        if len(splitted) < 5:
+        
+        # Check if file has the expected partitioned structure
+        year_parts = [p for p in splitted if "year=" in p]
+        month_parts = [p for p in splitted if "month=" in p]
+        day_parts = [p for p in splitted if "day=" in p]
+        
+        if not year_parts or not month_parts or not day_parts:
             logger.warning(
-                "Skipping file with unexpected path structure",
+                "Skipping file with unexpected path structure (missing year/month/day partitions)",
                 extra={"input_path": str(input_file)},
             )
             continue
 
-        year = [p for p in splitted if "year=" in p][0]
-        month = [p for p in splitted if "month=" in p][0]
-        day = [p for p in splitted if "day=" in p][0]
+        year = year_parts[0]
+        month = month_parts[0]
+        day = day_parts[0]
 
         output_file = PROCESSED_EVENTS_DIR / year / month / day / "events.parquet"
         if output_file.exists():
